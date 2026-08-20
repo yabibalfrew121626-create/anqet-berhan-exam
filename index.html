@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>የአንቀጽ ብርሃን ትምህርት ቤት ፈተና</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #1e293b;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #818cf8;
+            margin-bottom: 25px;
+            font-size: 24px;
+        }
+
+        .question-box {
+            margin-bottom: 20px;
+        }
+
+        .question-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .options label {
+            display: block;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .options label:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .options input {
+            margin-left: 10px;
+        }
+
+        button {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        #result {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>የአንቀጽ ብርሃን ትምህርት ቤት ፈተና</h1>
+        
+        <div id="quiz-form">
+            <div class="question-box">
+                <div class="question-title">1. ኮምፒዩተር ዋናው የማስላት ክፍሉ ማን ይባላል?</div>
+                <div class="options">
+                    <label><input type="radio" name="q1" value="A"> ሀ) ማዘርቦርድ</label>
+                    <label><input type="radio" name="q1" value="B"> ለ) ሲፒዩ (CPU)</label>
+                    <label><input type="radio" name="q1" value="C"> ሐ) ሃርድዲስክ</label>
+                </div>
+            </div>
+
+            <div class="question-box">
+                <div class="question-title">2. ከሚከተሉት ውስጥ የድር አሳሽ (Browser) የሆነው کومው ነው?</div>
+                <div class="options">
+                    <label><input type="radio" name="q2" value="A"> ሀ) ጉግል ክሮም (Google Chrome)</label>
+                    <label><input type="radio" name="q2" value="B"> ለ) ማይክሮሶፍት ዎርድ</label>
+                    <label><input type="radio" name="q2" value="C"> ሐ) ዊንዶውስ</label>
+                </div>
+            </div>
+
+            <button onclick="submitExam()">ፈተናውን አስረክብ</button>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function submitExam() {
+            const q1 = document.querySelector('input[name="q1"]:checked');
+            const q2 = document.querySelector('input[name="q2"]:checked');
+
+            if (!q1 || !q2) {
+                alert("እባክዎ ሁሉንም ጥያቄዎች ይመልሱ!");
+                return;
+            }
+
+            let score = 0;
+            if (q1.value === "B") score++;
+            if (q2.value === "A") score++;
+
+            document.getElementById('quiz-form').style.display = 'none';
+            document.getElementById('result').innerHTML = `ፈተናውን ጨርሰዋል!<br>የተገኙት ነጥብ: ${score} ከ 2`;
+        }
+    </script>
+
+</body>
+</html>
