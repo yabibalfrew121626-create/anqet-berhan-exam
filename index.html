@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>የአንቀጸ ብርሃን ሰንበት ትምህርት ቤት ፈተና መፈተኛ ገፅ (CBT v3.1 - Firebase)</title>
+    
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+        // የፋየርቤዝ ማዋቀሪያ መረጃዎ
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdjeIk9EAFGa8Ag9Hl_j2IjbRNlsbSY-Q",
+            authDomain: "ankesebrhanexam.firebaseapp.com",
+            projectId: "ankesebrhanexam",
+            storageBucket: "ankesebrhanexam.firebasestorage.app",
+            messagingSenderId: "435886819093",
+            appId: "1:435886819093:web:31b8d9a1552b802409cb1c"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ጥያቄዎችን እና ሴቲንጎችን ወደ ክላውድ መላኪያ
+        window.saveExamToCloud = async function(examDataObj) {
+            try {
+                await setDoc(doc(db, "examData", "currentExam"), examDataObj);
+                alert("ለውጦች እና ጥያቄዎች በተሳካ ሁኔታ ወደ ሰርቨር ተለቀቁ!");
+            } catch (error) {
+                console.error("ስህተት ተፈጥሯል: ", error);
+                alert("ማስቀመጥ አልተቻለም።");
+            }
+        };
+
+        // ከክላውድ ጥያቄዎችን እና ሴቲንጎችን ማንበቢያ
+        window.loadExamFromCloud = async function() {
+            try {
+                const docRef = doc(db, "examData", "currentExam");
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    return docSnap.data();
+                } else {
+                    return null;
+                }
+            } catch (error) {
+                console.error("ማንበብ አልተቻለም: ", error);
+                return null;
+            }
+        };
+
+        // የተማሪ ውጤት ወደ ሰርቨር መላኪያ
+        window.saveSubmissionToCloud = async function(subObj) {
+            try {
+                await setDoc(doc(db, "submissions", `${subObj.id}_${Date.now()}`), subObj);
+            } catch (error) {
+                console.error("ውጤት መዝገብ ላይ ስህተት: ", error);
+            }
+        };
+    </script>
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-gradient: linear-gradient(135deg, #090d16 0%, #0f172a 100%);
+            --card-bg: rgba(19, 28, 49, 0.90);
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #1e293b;
+            --success: #10b981;
+            --danger: #f43f5e;
+            --warning: #fbbf24;
+            --accent: #818cf8;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text);
+            margin: 0;
+            padding: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            padding: 28px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .menu-icon-btn {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: #1e293b;
+            color: white;
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 10;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .menu-icon-btn:hover { background: var(--primary); }
+
+        .settings-drawer {
+            position: fixed;
+            top: 0;
+            right: -380px;
+            width: 350px;
+            height: 100%;
+            background: #0b1120;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+            border-left: 1px solid var(--border);
+            z-index: 1000;
+            transition: right 0.4s cubic-bezier(0.1, 1, 0.1, 1);
+            padding: 24px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .settings-drawer.open { right: 0; }
+        .drawer-close {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            float: right;
+            font-weight: bold;
+        }
+
+        h2, h3 { color: var(--accent); text-align: center; margin-top: 0; font-weight: 700; letter-spacing: 0.5px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-muted); font-size: 13px; }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 14px;
+            background: #0b1120;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        .settings-drawer input, .settings-drawer select { background: #131c31; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25); }
+
+        button {
+            padding: 13px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        button:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4); }
+        .btn-secondary { background: #334155; box-shadow: none; }
+        .btn-secondary:hover { background: #475569; }
+        .btn-danger { background: var(--danger); box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3); }
+        .btn-danger:hover { background: #e11d48; }
+        .btn-success { background: var(--success); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        .btn-success:hover { background: #059669; }
+        .btn-warning { background: var(--warning); color: #000; box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3); }
+        .btn-warning:hover { background: #f59e0b; }
+
+        .hidden { display: none !important; }
+        
+        .top-header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0b1120;
+            padding: 12px 18px;
+            border-radius: 14px;
+            margin-bottom: 18px;
+            border: 1px solid var(--border);
+        }
+
+        .timer-box { font-size: 16px; font-weight: bold; color: var(--warning); display: flex; align-items: center; gap: 6px; }
+        
+        .exam-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        @media(min-width: 700px) {
+            .exam-layout {
+                display: grid;
+                grid-template-columns: 1fr 240px;
+                gap: 18px;
+            }
+        }
+
+        .question-main-box {
+            background: #0b1120;
+            padding: 22px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .palette-box {
+            background: #0b1120;
+            padding: 18px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+            max-height: 220px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .palette-btn {
+            aspect-ratio: 1;
+            background: #1e293b;
+            color: white;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: all 0.2s;
+        }
+
+        .palette-btn.answered { background: var(--success); border-color: var(--success); }
+        .palette-btn.flagged { background: var(--warning); color: #000; border-color: var(--warning); }
+        .palette-btn.current { border: 2px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+        .options-group label {
+            display: block;
+            background: #131c31;
+            padding: 14px;
+            border-radius: 12px;
+            margin-top: 12px;
+            cursor: pointer;
+            color: var(--text);
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+        .options-group label:hover { border-color: var(--primary); background: #18243f; }
+        .options-group input { width: auto; margin-right: 12px; accent-color: var(--primary); }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 22px;
+            gap: 12px;
+        }
+
+        .nav-switch { text-align: center; margin-top: 18px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
+        .nav-switch span { color: var(--accent); text-decoration: underline; }
+
+        .result-item {
+            background: #0b1120;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            border: 1px solid var(--border);
+        }
+        .correct { color: var(--success); font-weight: bold; }
+        .incorrect { color: var(--danger); font-weight: bold; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { color: var(--accent); background: #0b1120; }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #0b1120;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .stat-card h4 { margin: 0; color: var(--text-muted); font-size: 11px; }
+        .stat-card p { margin: 6px 0 0 0; font-size: 18px; font-weight: bold; color: var(--accent); }
+
+        .certificate-box {
+            background: #fff;
+            color: #000;
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            border: 8px solid #6366f1;
+            margin-top: 20px;
+            position: relative;
+        }
+        .certificate-box h1 { color: #4f46e5; margin-bottom: 5px; font-size: 22px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <button id="menu-btn" class="menu-icon-btn hidden" onclick="toggleSettingsDrawer()">☰</button>
+
+    <div id="settingsDrawer" class="settings-drawer">
+        <button class="drawer-close" onclick="toggleSettingsDrawer()">✕ ዝጋ</button>
+        <h3 style="color: #facc15; font-size: 16px; text-align: left; margin-top: 40px; margin-bottom: 16px;" id="ui-set-title">⚙️ ሴቲንግ እና የደህንነት ማዕከል</h3>
+        
+        <div class="form-group">
+            <label id="ui-lang-label">የሲስተም ቋንቋ (Language):</label>
+            <select id="t-system-lang" onchange="changeLanguageSetting()">
+                <option value="am">አማርኛ (Amharic)</option>
+                <option value="en">English (እንግሊዝኛ)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label id="ui-shuffle-label">የጥያቄዎች ማወዛወዣ (Shuffling):</label>
+            <select id="t-shuffle-setting" onchange="updateShuffleSetting()">
+                <option value="yes">አዎ - ቀያይር</option>
+                <option value="no">አይ - እንደተጠበቁ ይሁኑ</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label id="ui-pass-label">አድሚን ፓስወርድ መቀየሪያ:</label>
+            <input type="text" id="t-new-admin-pass" placeholder="አዲስ ፓስወርድ እዚህ ይጻፉ" style="margin-bottom: 8px;">
+            <button type="button" class="btn-warning" onclick="changeAdminPassword()" style="width: 100%; padding: 10px;" id="ui-pass-btn">ፓስወርድ ቀይር</button>
+        </div>
+
+        <div class="form-group">
+            <label id="ui-data-label">ዳታ እና ፋይል ምትኬ (Backup/Export):</label>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+                <button type="button" class="btn-success" onclick="exportResultsToCSV()" style="padding: 10px; font-size: 12px;" id="ui-export-btn">📥 CSV አውርድ</button>
+                <button type="button" class="btn-secondary" onclick="exportExamJSON()" style="padding: 10px; font-size: 12px;" id="ui-json-export">📤 ጥያቄዎችን Export</button>
+                <button type="button" class="btn-danger" onclick="clearAllSubmissions()" style="padding: 10px; font-size: 12px;" id="ui-clear-btn">🗑️ ውጤት አጽዳ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. ተማሪ መግቢያ ገጽ -->
+    <div id="student-login-view">
+        <h2 id="ui-s-title">የአንቀጸ ብርሃን ሰንበት ትምህርት ቤት ፈተና መፈተኛ ገፅ</h2>
+        <div class="form-group" style="margin-top: 20px;">
+            <label id="ui-s-name-label">ሙሉ ስምዎ:</label>
+            <input type="text" id="s-name" placeholder="ስም እና የአባት ስም">
+        </div>
+        <div class="form-group">
+            <label id="ui-s-id-label">የተማሪ መለያ ቁጥር (ID Number):</label>
+            <input type="text" id="s-id" placeholder="ለምሳሌ: ST/8821/16">
+        </div>
+        <div class="form-group">
+            <label id="ui-s-grade-label">ክፍል እና የትምህርት ክፍል (Grade & Stream):</label>
+            <input type="text" id="s-grade" placeholder="ለምሳሌ: 12ኛ ክፍል - Natural">
+        </div>
+        <div class="form-group">
+            <label id="ui-s-pass-label">የፈተና መግቢያ ኮድ (Exam Code):</label>
+            <input type="password" id="s-pass" placeholder="መምህሩ የሰጠውን ኮድ ያስገቡ">
+        </div>
+        <button onclick="startStudentExam()" id="ui-s-btn" style="width: 100%; margin-top: 10px;">ፈተናውን በደህና ጀምር</button>
+        <div class="nav-switch" onclick="switchView('teacher-login-view')"><span id="ui-s-switch">አስተማሪ ነዎት? ወደ አድሚን መግቢያ ይግቡ</span></div>
+    </div>
+
+    <!-- 2. አስተማሪ መግቢያ ገጽ -->
+    <div id="teacher-login-view" class="hidden">
+        <h2 id="ui-t-title">የአስተማሪ አድሚን ፖርታል</h2>
+        <div class="form-group" style="margin-top: 20px;">
+            <label id="ui-t-pass-label">የአስተማሪ ሚስጥራዊ ቃል (Admin Password):</label>
+            <input type="password" id="t-admin-pass" placeholder="የአስተማሪ ፓስወርድ ያስገቡ">
+        </div>
+        <button onclick="teacherLogin()" id="ui-t-btn" style="width: 100%; margin-top: 10px;">ወደ ዳሽቦርድ ግባ</button>
+        <div class="nav-switch" onclick="switchView('student-login-view')"><span id="ui-t-back">← ወደ ተማሪዎች መግቢያ ገጽ ተመለስ</span></div>
+    </div>
+
+    <!-- 3. አስተማሪ ዳሽቦርድ -->
+    <div id="teacher-dashboard-view" class="hidden">
+        <h2 id="ui-td-title">የአስተማሪ ዳሽቦርድ & ቁጥጥር</h2>
+        
+        <div class="stats-container">
+            <div class="stat-card">
+                <h4 id="ui-stat-total">ጠቅላላ ተፈታኞች</h4>
+                <p id="stat-total-val">0</p>
+            </div>
+            <div class="stat-card">
+                <h4 id="ui-stat-avg">አማካኝ ውጤት</h4>
+                <p id="stat-avg-val">0%</p>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label id="ui-exam-code-label">የተማሪዎች ፈተና መግቢያ ኮድ (Exam Code):</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="t-exam-pass" value="school123" style="margin-top:0;">
+                <button type="button" class="btn-success" onclick="updateExamCodeOnly()" style="margin-top:0; width: 140px; padding: 10px; font-size: 12px;" id="ui-update-code-btn">ኮድ ቀይር</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label id="ui-duration-label">የፈተና ቆይታ ሰዓት (በደቂቃ):</label>
+            <input type="number" id="t-exam-duration" value="30">
+        </div>
+
+        <div class="form-group" style="background: #0b1120; padding: 14px; border-radius: 12px; border: 1px dashed var(--primary);">
+            <label style="color: #facc15;" id="ui-extra-label">⏱️ ለተማሪዎች ተጨማሪ ሰዓት ማራዘሚያ:</label>
+            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                <input type="number" id="t-extra-minutes" placeholder="ደቂቃ" value="10" style="margin-top:0;">
+                <button type="button" class="btn-success" onclick="extendExamTime()" style="margin-top:0; width: 150px; padding: 10px;" id="ui-extra-btn">ሰዓት አራዝም</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label id="ui-file-label">የፈተና ማጣቀሻ ፋይል (PDF ወይም ፎቶ):</label>
+            <input type="file" id="t-exam-file" accept="image/*,.pdf">
+        </div>
+
+        <hr style="border-color: var(--border); margin: 24px 0;">
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3 id="ui-q-title" style="margin: 0; text-align: left;">የፈተና ጥያቄዎችን ማስገቢያ (MCQ Builder)</h3>
+            <button type="button" class="btn-danger" onclick="clearExistingExamQuestions()" style="padding: 8px 12px; font-size: 11px;" id="ui-clear-q-btn">🗑️ አሁን ያሉትን ጥያቄዎች አጥፋ/አድስ</button>
+        </div>
+
+        <div class="form-group">
+            <label id="ui-qtext-label">የጥያቄው ጽሁፍ:</label>
+            <input type="text" id="new-q-text" placeholder="ጥያቄውን እዚህ ይጻፉ...">
+        </div>
+        <div class="form-group"><label id="ui-opt0-label">አማራጭ ሀ:</label><input type="text" id="new-opt-0"></div>
+        <div class="form-group"><label id="ui-opt1-label">አማራጭ ለ:</label><input type="text" id="new-opt-1"></div>
+        <div class="form-group"><label id="ui-opt2-label">አማራጭ ሐ:</label><input type="text" id="new-opt-2"></div>
+        <div class="form-group"><label id="ui-opt3-label">አማራጭ መ:</label><input type="text" id="new-opt-3"></div>
+        <div class="form-group">
+            <label id="ui-correct-label">ትክክለኛው መልስ:</label>
+            <select id="new-correct-ans">
+                <option value="0" id="ui-opt-a">አማራጭ ሀ</option>
+                <option value="1" id="ui-opt-b">አማራጭ ለ</option>
+                <option value="2" id="ui-opt-c">አማራጭ ሐ</option>
+                <option value="3" id="ui-opt-d">አማራጭ መ</option>
+            </select>
+        </div>
+        <button class="btn-secondary" onclick="addQuestion()" style="width: 100%;" id="ui-addq-btn">+ ጥያቄውን ወደ ዝርዝር አክል</button>
+
+        <div id="teacher-questions-preview" style="margin-top: 14px; font-size: 13px; color: var(--text-muted);"></div>
+
+        <button style="margin-top: 20px; width: 100%;" onclick="saveExamSettings()" id="ui-save-btn">ሁሉንም ለውጦች አስቀምጥ & አሳተም</button>
+
+        <h3 style="margin-top: 35px;" id="ui-res-title">የተማሪዎች ውጤት መከታተያ ሠንጠረዥ</h3>
+        
+        <div class="form-group">
+            <input type="text" id="search-student" placeholder="🔍 ተማሪ በስም ወይም በ ID ፈልግ..." onkeyup="filterSubmissions()">
+        </div>
+
+        <div id="teacher-results-container" style="overflow-x: auto;">
+            <p style="color: var(--text-muted); text-align: center;" id="ui-no-res">እስካሁን የተፈተነ ተማሪ የለም።</p>
+        </div>
+
+        <button class="btn-danger" style="margin-top: 25px; width: 100%;" onclick="switchView('student-login-view')" id="ui-logout-btn">ውጣ (Logout)</button>
+    </div>
+
+    <!-- 4. ተማሪ ፈተና መስጫ ክፍል -->
+    <div id="student-exam-view" class="hidden">
+        <div class="top-header-bar">
+            <div class="timer-box">⏳ <span id="time-left">00:00</span></div>
+            <div id="cheating-warning" style="font-size: 11px; color: var(--danger);"></div>
+            <button type="button" class="btn-danger" onclick="studentLogout()" style="padding: 6px 14px; font-size: 12px;" id="ui-ex-logout">🚪 ውጣ</button>
+        </div>
+
+        <div class="exam-layout">
+            <div class="question-main-box">
+                <div id="question-container"></div>
+
+                <div style="margin-top: 18px;">
+                    <button type="button" id="flag-btn" class="btn-warning" onclick="toggleFlagCurrent()" style="font-size: 12px; padding: 9px 14px; width: 100%;">🚩 ለግምገማ ምልክት አድርግበት</button>
+                </div>
+
+                <div class="nav-buttons">
+                    <button type="button" class="btn-secondary" onclick="prevQuestion()" style="flex:1;" id="ui-prev-btn">← ቀድሞ</button>
+                    <button type="button" onclick="nextQuestion()" style="flex:1;" id="ui-next-btn">ቀጣይ →</button>
+                </div>
+            </div>
+
+            <div class="palette-box">
+                <label style="font-weight: bold; color: #f8fafc; margin-bottom: 6px;" id="ui-palette-label">የጥያቄ ሰንጠረዥ:</label>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px; line-height: 1.4;" id="ui-legend">
+                    🟩 የተመለሰ<br>
+                    🟨 የተጠረጠረ (Flagged)<br>
+                    ⬜ ያልተመለሰ
+                </div>
+                <div class="palette-grid" id="palette-grid"></div>
+                <button type="button" class="btn-success" onclick="confirmSubmit()" style="margin-top: 15px; width: 100%; font-size: 13px;" id="ui-submit-btn">ፈተናውን ጨርቅ አስረክብ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. የተማሪ ውጤት እና ሰርተፍኬት ማሳያ ገጽ -->
+    <div id="student-result-view" class="hidden">
+        <h2 id="ui-reshead-title">የፈተና ማጠቃለያ እና ውጤት</h2>
+        <div id="score-card" style="text-align: center; font-size: 18px; font-weight: bold; color: var(--success); margin-bottom: 18px;"></div>
+        
+        <div id="certificate-container"></div>
+
+        <h3 id="ui-review-title" style="margin-top: 25px;">የመልሶች እርማት ዝርዝር</h3>
+        <div id="student-review-container"></div>
+        <button style="margin-top: 20px; width: 100%;" onclick="switchView('student-login-view')" id="ui-backhome-btn">ወደ መግቢያ ገጽ ተመለስ</button>
+    </div>
+
+</div>
+
+<script>
+    let adminPassword = localStorage.getItem('adminPassword') || "admin123";
+
+    let examConfig = {
+        password: "school123",
+        duration: 30,
+        language: "am",
+        shuffle: "yes",
+        questions: []
+    };
+
+    const dict = {
+        am: {
+            sTitle: "የአንቀጸ ብርሃን ሰንበት ትምህርት ቤት ፈተና መፈተኛ ገፅ",
+            sNameLbl: "ሙሉ ስምዎ:",
+            sIdLbl: "የተማሪ መለያ ቁጥር (ID Number):",
+            sGradeLbl: "ክፍል እና የትምህርት ክፍል (Grade & Stream):",
+            sPassLbl: "የፈተና መግቢያ ኮድ (Exam Code):",
+            sBtn: "ፈተናውን በደህና ጀምር",
+            sSwitch: "አስተማሪ ነዎት? ወደ አድሚን መግቢያ ይግቡ",
+            tTitle: "የአስተማሪ አድሚን ፖርታል",
+            tPassLbl: "የአስተማሪ ሚስጥራዊ ቃል (Admin Password):",
+            tBtn: "ወደ ዳሽቦርድ ግባ",
+            tBack: "← ወደ ተማሪዎች መግቢያ ገጽ ተመለስ",
+            tdTitle: "የአስተማሪ ዳሽቦርድ & ቁጥጥር",
+            setTitle: "⚙️ ሴቲንግ እና የደህንነት ማዕከል",
+            langLbl: "የሲስተም ቋንቋ (Language):",
+            shuffleLbl: "የጥያቄዎች ማወዛወዣ (Shuffling):",
+            passLbl: "አድሚን ፓስወርድ መቀየሪያ:",
+            passBtn: "ፓስወርድ ቀይር",
+            dataLbl: "ዳታ እና ፋይል ምትኬ (Backup/Export):",
+            exportBtn: "📥 CSV አውርድ",
+            jsonExport: "📤 ጥያቄዎችን Export",
+            clearBtn: "🗑️ ውጤት አጽዳ",
+            examCodeLbl: "የተማሪዎች ፈተና መግቢያ ኮድ (Exam Code):",
+            durationLbl: "የፈተና ቆይታ ሰዓት (በደቂቃ):",
+            extraLbl: "⏱️ ለተማሪዎች ተጨማሪ ሰዓት ማራዘሚያ:",
+            extraBtn: "ሰዓት አራዝም",
+            fileLbl: "የፈተና ማጣቀሻ ፋይል (PDF ወይም ፎቶ):",
+            qTitle: "የፈተና ጥያቄዎችን ማስገቢያ (MCQ Builder)",
+            qtextLbl: "የጥያቄው ጽሁፍ:",
+            opt0Lbl: "አማራጭ ሀ:",
+            opt1Lbl: "አማራጭ ለ:",
+            opt2Lbl: "አማራጭ ሐ:",
+            opt3Lbl: "አማራጭ መ:",
+            correctLbl: "ትክክለኛው መልስ:",
+            optA: "አማራጭ ሀ",
+            optB: "አማራጭ ለ",
+            optC: "አማራጭ ሐ",
+            optD: "አማራጭ መ",
+            addqBtn: "+ ጥያቄውን ወደ ዝርዝር አክል",
+            saveBtn: "ሁሉንም ለውጦች አስቀምጥ & አሳተም",
+            resTitle: "የተማሪዎች ውጤት መከታተያ ሠንጠረዥ",
+            noRes: "እስካሁን የተፈተነ ተማሪ የለም።",
+            logoutBtn: "ውጣ (Logout)",
+            prevBtn: "← ቀድሞ",
+            nextBtn: "ቀጣይ →",
+            paletteLbl: "የጥያቄ ሰንጠረዥ:",
+            submitBtn: "ፈተናውን ጨርቅ አስረክብ",
+            resheadTitle: "የፈተና ማጠቃለያ እና ውጤት",
+            reviewTitle: "የመልሶች እርማት ዝርዝር",
+            backhomeBtn: "ወደ መግቢያ ገጽ ተመለስ",
+            statTotal: "ጠቅላላ ተፈታኞች",
+            statAvg: "አማካኝ ውጤት"
+        },
+        en: {
+            sTitle: "Anqet Berhan Sunday School Exam Portal",
+            sNameLbl: "Full Name:",
+            sIdLbl: "Student ID Number:",
+            sGradeLbl: "Grade & Stream:",
+            sPassLbl: "Exam Entry Code:",
+            sBtn: "Start Exam Safely",
+            sSwitch: "Are you a teacher? Login to Admin Portal",
+            tTitle: "Teacher Admin Portal",
+            tPassLbl: "Admin Password:",
+            tBtn: "Login to Dashboard",
+            tBack: "← Back to Student Login",
+            tdTitle: "Teacher Dashboard & Controls",
+            setTitle: "⚙️ Settings & Security Center",
+            langLbl: "System Language:",
+            shuffleLbl: "Question Shuffling:",
+            passLbl: "Change Admin Password:",
+            passBtn: "Change Password",
+            dataLbl: "Data & Backup Management:",
+            exportBtn: "📥 Download CSV",
+            jsonExport: "📤 Export JSON",
+            clearBtn: "🗑️ Clear Results",
+            examCodeLbl: "Student Exam Code:",
+            durationLbl: "Exam Duration (Minutes):",
+            extraLbl: "⏱️ Extend Exam Time for Students:",
+            extraBtn: "Extend Time",
+            fileLbl: "Exam Reference File (PDF/Image):",
+            qTitle: "Exam Question Builder (MCQ)",
+            qtextLbl: "Question Text:",
+            opt0Lbl: "Option A:",
+            opt1Lbl: "Option B:",
+            opt2Lbl: "Option C:",
+            opt3Lbl: "Option D:",
+            correctLbl: "Correct Answer:",
+            optA: "Option A",
+            optB: "Option B",
+            optC: "Option C",
+            optD: "Option D",
+            addqBtn: "+ Add Question to List",
+            saveBtn: "Save All Settings & Publish",
+            resTitle: "Student Results Tracker Table",
+            noRes: "No student submissions yet.",
+            logoutBtn: "Logout",
+            prevBtn: "← Previous",
+            nextBtn: "Next →",
+            paletteLbl: "Question Palette:",
+            submitBtn: "Submit Exam",
+            resheadTitle: "Exam Summary & Score",
+            reviewTitle: "Detailed Answers Review",
+            backhomeBtn: "Back to Home",
+            statTotal: "Total Students",
+            statAvg: "Average Score"
+        }
+    };
+
+    let submissions = [];
+    let tempQuestions = [];
+    let activeStudent = { name: "", id: "", grade: "" };
+    let timerInterval;
+    let timeLeftSeconds = 0;
+
+    let currentQIndex = 0;
+    let studentAnswers = {};
+    let flaggedQuestions = {};
+    let activeExamQuestions = [];
+    let cheatWarningsCount = 0;
+
+    // ሲስተሙ ሲከፈት መረጃዎችን ከፋየርቤዝ መጫን
+    window.addEventListener('DOMContentLoaded', async () => {
+        if(window.loadExamFromCloud) {
+            const cloudData = await window.loadExamFromCloud();
+            if(cloudData) {
+                examConfig = cloudData;
+                tempQuestions = [...(examConfig.questions || [])];
+            }
+        }
+        updateLanguageUI();
+    });
+
+    function toggleSettingsDrawer() {
+        document.getElementById('settingsDrawer').classList.toggle('open');
+    }
+
+    function updateLanguageUI() {
+        const lang = examConfig.language || "am";
+        const d = dict[lang];
+
+        document.getElementById('ui-s-title').textContent = d.sTitle;
+        document.getElementById('ui-s-name-label').textContent = d.sNameLbl;
+        document.getElementById('ui-s-id-label').textContent = d.sIdLbl;
+        document.getElementById('ui-s-grade-label').textContent = d.sGradeLbl;
+        document.getElementById('ui-s-pass-label').textContent = d.sPassLbl;
+        document.getElementById('ui-s-btn').textContent = d.sBtn;
+        document.getElementById('ui-s-switch').textContent = d.sSwitch;
+
+        document.getElementById('ui-t-title').textContent = d.tTitle;
+        document.getElementById('ui-t-pass-label').textContent = d.tPassLbl;
+        document.getElementById('ui-t-btn').textContent = d.tBtn;
+        document.getElementById('ui-t-back').textContent = d.tBack;
+
+        document.getElementById('ui-td-title').textContent = d.tdTitle;
+        document.getElementById('ui-set-title').textContent = d.setTitle;
+        document.getElementById('ui-lang-label').textContent = d.langLbl;
+        document.getElementById('ui-shuffle-label').textContent = d.shuffleLbl;
+        document.getElementById('ui-pass-label').textContent = d.passLbl;
+        document.getElementById('ui-pass-btn').textContent = d.passBtn;
+        document.getElementById('ui-data-label').textContent = d.dataLbl;
+        document.getElementById('ui-export-btn').textContent = d.exportBtn;
+        document.getElementById('ui-json-export').textContent = d.jsonExport;
+        document.getElementById('ui-clear-btn').textContent = d.clearBtn;
+        document.getElementById('ui-exam-code-label').textContent = d.examCodeLbl;
+        document.getElementById('ui-duration-label').textContent = d.durationLbl;
+        document.getElementById('ui-extra-label').textContent = d.extraLbl;
+        document.getElementById('ui-extra-btn').textContent = d.extraBtn;
+        document.getElementById('ui-file-label').textContent = d.fileLbl;
+        document.getElementById('ui-q-title').textContent = d.qTitle;
+        document.getElementById('ui-qtext-label').textContent = d.qtextLbl;
+        document.getElementById('ui-opt0-label').textContent = d.opt0Lbl;
+        document.getElementById('ui-opt1-label').textContent = d.opt1Lbl;
+        document.getElementById('ui-opt2-label').textContent = d.opt2Lbl;
+        document.getElementById('ui-opt3-label').textContent = d.opt3Lbl;
+        document.getElementById('ui-correct-label').textContent = d.correctLbl;
+        document.getElementById('ui-opt-a').textContent = d.optA;
+        document.getElementById('ui-opt-b').textContent = d.optB;
+        document.getElementById('ui-opt-c').textContent = d.optC;
+        document.getElementById('ui-opt-d').textContent = d.optD;
+        document.getElementById('ui-addq-btn').textContent = d.addqBtn;
+        document.getElementById('ui-save-btn').textContent = d.saveBtn;
+        document.getElementById('ui-res-title').textContent = d.resTitle;
+        document.getElementById('ui-logout-btn').textContent = d.logoutBtn;
+        
+        document.getElementById('ui-ex-logout').textContent = d.logoutBtn;
+        document.getElementById('ui-prev-btn').textContent = d.prevBtn;
+        document.getElementById('ui-next-btn').textContent = d.nextBtn;
+        document.getElementById('ui-palette-label').textContent = d.paletteLbl;
+        document.getElementById('ui-submit-btn').textContent = d.submitBtn;
+
+        document.getElementById('ui-reshead-title').textContent = d.resheadTitle;
+        document.getElementById('ui-review-title').textContent = d.reviewTitle;
+        document.getElementById('ui-backhome-btn').textContent = d.backhomeBtn;
+        document.getElementById('ui-stat-total').textContent = d.statTotal;
+        document.getElementById('ui-stat-avg').textContent = d.statAvg;
+
+        document.getElementById('t-system-lang').value = lang;
+        document.getElementById('t-shuffle-setting').value = examConfig.shuffle || "yes";
+    }
+
+    function changeLanguageSetting() {
+        examConfig.language = document.getElementById('t-system-lang').value;
+        updateLanguageUI();
+    }
+
+    function updateShuffleSetting() {
+        examConfig.shuffle = document.getElementById('t-shuffle-setting').value;
+    }
+
+    function switchView(viewId) {
+        document.getElementById('student-login-view').classList.add('hidden');
+        document.getElementById('teacher-login-view').classList.add('hidden');
+        document.getElementById('teacher-dashboard-view').classList.add('hidden');
+        document.getElementById('student-exam-view').classList.add('hidden');
+        document.getElementById('student-result-view').classList.add('hidden');
+
+        document.getElementById(viewId).classList.remove('hidden');
+
+        const menuBtn = document.getElementById('menu-btn');
+        if(viewId === 'teacher-dashboard-view') {
+            menuBtn.classList.remove('hidden');
+            document.getElementById('t-exam-pass').value = examConfig.password || "school123";
+            document.getElementById('t-exam-duration').value = examConfig.duration || 30;
+            document.getElementById('t-new-admin-pass').value = "";
+            tempQuestions = [...(examConfig.questions || [])];
+            loadTeacherPreview();
+            loadSubmissionsTable(submissions);
+            updateDashboardStats();
+        } else {
+            menuBtn.classList.add('hidden');
+            document.getElementById('settingsDrawer').classList.remove('open');
+        }
+        updateLanguageUI();
+    }
+
+    function updateDashboardStats() {
+        document.getElementById('stat-total-val').textContent = submissions.length;
+        if(submissions.length > 0) {
+            let totalScore = submissions.reduce((sum, s) => sum + (s.score / s.total * 100), 0);
+            let avg = Math.round(totalScore / submissions.length);
+            document.getElementById('stat-avg-val').textContent = avg + "%";
+        } else {
+            document.getElementById('stat-avg-val').textContent = "0%";
+        }
+    }
+
+    function teacherLogin() {
+        const pass = document.getElementById('t-admin-pass').value;
+        if(pass === adminPassword) {
+            switchView('teacher-dashboard-view');
+        } else {
+            alert(examConfig.language === 'en' ? "Incorrect admin password!" : "የአስተማሪ መግቢያ ፓስወርድ ስህተት ነው!");
+        }
+    }
+
+    function changeAdminPassword() {
+        const newPass = document.getElementById('t-new-admin-pass').value.trim();
+        if(!newPass) return;
+        adminPassword = newPass;
+        localStorage.setItem('adminPassword', adminPassword);
+        document.getElementById('t-new-admin-pass').value = "";
+        alert(examConfig.language === 'en' ? "Password updated!" : "የአስተማሪ ፓስወርድ ተቀይሯል!");
+    }
+
+    function clearAllSubmissions() {
+        if(confirm(examConfig.language === 'en' ? "Clear all submissions?" : "ውጤቶችን ማጽዳት ይፈልጋሉ?")) {
+            submissions = [];
+            loadSubmissionsTable(submissions);
+            updateDashboardStats();
+        }
+    }
+
+    function exportResultsToCSV() {
+        if(submissions.length === 0) return;
+        let csv = "Name,ID,Grade,Score,Total,Time\n";
+        submissions.forEach(s => { csv += `"${s.name}","${s.id}","${s.grade}",${s.score},${s.total},"${s.time}"\n`; });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "exam_results.csv";
+        link.click();
+    }
+
+    function exportExamJSON() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(examConfig));
+        const link = document.createElement("a");
+        link.href = dataStr;
+        link.download = "exam_config_backup.json";
+        link.click();
+    }
+
+    function addQuestion() {
+        const text = document.getElementById('new-q-text').value.trim();
+        const opts = [
+            document.getElementById('new-opt-0').value.trim(),
+            document.getElementById('new-opt-1').value.trim(),
+            document.getElementById('new-opt-2').value.trim(),
+            document.getElementById('new-opt-3').value.trim()
+        ];
+        const correct = parseInt(document.getElementById('new-correct-ans').value);
+
+        if(!text || opts.some(o => !o)) {
+            alert(examConfig.language === 'en' ? "Fill all fields!" : "እባክዎን ጥያቄውን እና አማራጮቹን ይሙሉ!");
+            return;
+        }
+
+        tempQuestions.push({ text, opts, correct });
+        document.getElementById('new-q-text').value = "";
+        document.getElementById('new-opt-0').value = "";
+        document.getElementById('new-opt-1').value = "";
+        document.getElementById('new-opt-2').value = "";
+        document.getElementById('new-opt-3').value = "";
+        loadTeacherPreview();
+    }
+
+    function loadTeacherPreview() {
+        document.getElementById('teacher-questions-preview').innerHTML = 
+            `<b>${examConfig.language === 'en' ? 'Total Questions:' : 'ጠቅላላ ጥያቄዎች:'}</b> ${tempQuestions.length}`;
+    }
+
+    // ከፋየርቤዝ ጋር ለማስቀመጥ
+    async function saveExamSettings() {
+        examConfig.password = document.getElementById('t-exam-pass').value.trim();
+        examConfig.duration = parseInt(document.getElementById('t-exam-duration').value) || 30;
+        examConfig.questions = [...tempQuestions];
+        
+        if(window.saveExamToCloud) {
+            await window.saveExamToCloud(examConfig);
+        }
+    }
+
+    function clearExistingExamQuestions() {
+        if(confirm(examConfig.language === 'en' ? "Clear all existing questions to write a new exam?" : "አሁን ያሉትን ጥያቄዎች ሙሉ በሙሉ አጥፍቶ አዲስ ፈተና መጻፍ ፈልገዋል?")) {
+            tempQuestions = [];
+            examConfig.questions = [];
+            loadTeacherPreview();
+            alert(examConfig.language === 'en' ? "All previous questions cleared." : "ቀደም ሲል የነበሩት ጥያቄዎች ጠፍተዋል።");
+        }
+    }
+
+    function updateExamCodeOnly() {
+        const newCode = document.getElementById('t-exam-pass').value.trim();
+        if(!newCode) {
+            alert(examConfig.language === 'en' ? "Please enter a valid exam code." : "እባክዎን ትክክለኛ የፈተና ኮድ ያስገቡ።");
+            return;
+        }
+        examConfig.password = newCode;
+        alert(examConfig.language === 'en' ? "Exam code updated!" : "የተማሪዎች መግቢያ ኮድ ተቀይሯል!");
+    }
+
+    function extendExamTime() {
+        const extraMins = parseInt(document.getElementById('t-extra-minutes').value) || 0;
+        if (extraMins <= 0) return;
+        examConfig.duration += extraMins;
+        timeLeftSeconds += (extraMins * 60);
+        alert(examConfig.language === 'en' ? `Extended by ${extraMins} mins` : `ሰዓቱ ተራዝሟል!`);
+    }
+
+    function startStudentExam() {
+        const name = document.getElementById('s-name').value.trim();
+        const id = document.getElementById('s-id').value.trim();
+        const grade = document.getElementById('s-grade').value.trim();
+        const pass = document.getElementById('s-pass').value.trim();
+
+        if(!name || !id || !grade || !pass) {
+            alert(examConfig.language === 'en' ? "Fill all fields!" : "እባክዎን ሁሉንም መስኮች ይሙሉ!");
+            return;
+        }
+
+        if(pass !== examConfig.password) {
+            alert(examConfig.language === 'en' ? "Incorrect code!" : "የፈተና ኮድ ስህተት ነው!");
+            return;
+        }
+
+        if(!examConfig.questions || examConfig.questions.length === 0) {
+            alert(examConfig.language === 'en' ? "No questions available." : "ምንም ጥያቄ አልተገኘም።");
+            return;
+        }
+
+        activeStudent = { name, id, grade };
+        studentAnswers = {};
+        flaggedQuestions = {};
+        currentQIndex = 0;
+        cheatWarningsCount = 0;
+
+        activeExamQuestions = JSON.parse(JSON.stringify(examConfig.questions));
+        if(examConfig.shuffle === "yes") {
+            activeExamQuestions.sort(() => Math.random() - 0.5);
+        }
+
+        switchView('student-exam-view');
+        renderQuestion();
+        renderPalette();
+        
+        timeLeftSeconds = examConfig.duration * 60;
+        startTimer();
+    }
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden && !document.getElementById('student-exam-view').classList.contains('hidden')) {
+            cheatWarningsCount++;
+            const warnEl = document.getElementById('cheating-warning');
+            warnEl.textContent = `⚠️ Warning (${cheatWarningsCount}/3): Stay on exam page!`;
+            if(cheatWarningsCount >= 3) {
+                alert("ተደጋጋሚ ከፈተናው ውጪ በመወጣትዎ ፈተናዎ በራስ ሰር እንዲገባ ተደርጓል!");
+                submitStudentExam();
+            }
+        }
+    });
+
+    function studentLogout() {
+        if (confirm(examConfig.language === 'en' ? "Leave exam?" : "ከፈተናው መውጣት ይፈልጋሉ?")) {
+            clearInterval(timerInterval);
+            switchView('student-login-view');
+        }
+    }
+
+    function renderQuestion() {
+        const qContainer = document.getElementById('question-container');
+        const q = activeExamQuestions[currentQIndex];
+        
+        let optionsHtml = "";
+        q.opts.forEach((opt, optIdx) => {
+            const isChecked = studentAnswers[currentQIndex] === optIdx ? "checked" : "";
+            optionsHtml += `
+                <label>
+                    <input type="radio" name="current_q_option" value="${optIdx}" ${isChecked} onchange="selectOption(${optIdx})">
+                    ${opt}
+                </label>
+            `;
+        });
+
+        qContainer.innerHTML = `
+            <p style="color: var(--accent); font-weight: bold; font-size: 13px;">${examConfig.language === 'en' ? 'Question' : 'ጥያቄ'} ${currentQIndex + 1} / ${activeExamQuestions.length}</p>
+            <p style="font-size: 15px; margin-bottom: 14px; line-height: 1.5;"><b>${q.text}</b></p>
+            <div class="options-group">${optionsHtml}</div>
+        `;
+
+        const flagBtn = document.getElementById('flag-btn');
+        if (flaggedQuestions[currentQIndex]) {
+            flagBtn.textContent = "🚩 Unflag";
+            flagBtn.style.background = "#f43f5e";
+        } else {
+            flagBtn.textContent = "🚩 Flag for Review";
+            flagBtn.style.background = "#fbbf24";
+        }
+
+        renderPalette();
+    }
+
+    function selectOption(optIdx) {
+        studentAnswers[currentQIndex] = optIdx;
+        renderPalette();
+    }
+
+    function toggleFlagCurrent() {
+        if (flaggedQuestions[currentQIndex]) {
+            delete flaggedQuestions[currentQIndex];
+        } else {
+            flaggedQuestions[currentQIndex] = true;
+        }
+        renderQuestion();
+    }
+
+    function nextQuestion() {
+        if (currentQIndex < activeExamQuestions.length - 1) { currentQIndex++; renderQuestion(); }
+    }
+
+    function prevQuestion() {
+        if (currentQIndex > 0) { currentQIndex--; renderQuestion(); }
+    }
+
+    function goToQuestion(index) {
+        currentQIndex = index;
+        renderQuestion();
+    }
+
+    function renderPalette() {
+        const paletteGrid = document.getElementById('palette-grid');
+        paletteGrid.innerHTML = "";
+
+        activeExamQuestions.forEach((_, idx) => {
+            let btnClass = "palette-btn";
+            if (idx === currentQIndex) btnClass += " current";
+            if (flaggedQuestions[idx]) btnClass += " flagged";
+            else if (studentAnswers[idx] !== undefined) btnClass += " answered";
+
+            paletteGrid.innerHTML += `<button type="button" class="${btnClass}" onclick="goToQuestion(${idx})">${idx + 1}</button>`;
+        });
+    }
+
+    function startTimer() {
+        const display = document.getElementById('time-left');
+        clearInterval(timerInterval);
+
+        timerInterval = setInterval(() => {
+            if (timeLeftSeconds <= 0) {
+                clearInterval(timerInterval);
+                alert("ሰዓቱ አልቋል! ፈተናው በራስ ሰር ገብቷል።");
+                submitStudentExam();
+                return;
+            }
+            timeLeftSeconds--;
+            let minutes = Math.floor(timeLeftSeconds / 60);
+            let seconds = timeLeftSeconds % 60;
+            display.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }, 1000);
+    }
+
+    function confirmSubmit() {
+        if (confirm("ፈተናውን ማስረክብ ይፈልጋሉ?")) {
+            submitStudentExam();
+        }
+    }
+
+    function submitStudentExam() {
+        clearInterval(timerInterval);
+        let score = 0;
+        let reviewHtml = "";
+
+        activeExamQuestions.forEach((q, qIndex) => {
+            const selectedVal = studentAnswers[qIndex] !== undefined ? studentAnswers[qIndex] : null;
+            const isCorrect = selectedVal === q.correct;
+            if(isCorrect) score++;
+
+            const userAnsText = selectedVal !== null ? q.opts[selectedVal] : "አልመለሰም";
+            const correctAnsText = q.opts[q.correct];
+
+            reviewHtml += `
+                <div class="result-item">
+                    <p><b>ጥያቄ ${qIndex + 1}:</b> ${q.text}</p>
+                    <p>የመረጡት: <span class="${isCorrect ? 'correct' : 'incorrect'}">${userAnsText}</span></p>
+                    <p>ትክክለኛው: <span class="correct">${correctAnsText}</span></p>
+                </div>
+            `;
+        });
+
+        const percentage = Math.round((score / activeExamQuestions.length) * 100);
+
+        const submissionData = {
+            name: activeStudent.name,
+            id: activeStudent.id,
+            grade: activeStudent.grade,
+            score: score,
+            total: activeExamQuestions.length,
+            time: new Date().toLocaleTimeString()
+        };
+
+        submissions.push(submissionData);
+        if(window.saveSubmissionToCloud) {
+            window.saveSubmissionToCloud(submissionData);
+        }
+
+        switchView('student-result-view');
+        document.getElementById('score-card').textContent = 
+            `${activeStudent.name} (${activeStudent.grade}) - ውጤት: ${score} / ${activeExamQuestions.length} (${percentage}%)`;
+
+        const certContainer = document.getElementById('certificate-container');
+        if(percentage >= 50) {
+            certContainer.innerHTML = `
+                <div class="certificate-box">
+                    <h1>🌟 CERTIFICATE OF COMPLETION 🌟</h1>
+                    <p style="margin: 5px 0; font-size: 13px;">ይህ የምስክር ወረቀት ሰርተፍኬት የሚሰጠው ለአንቀጸ ብርሃን ሰንበት ትምህርት ቤት ፈተና ተሳታፊ:</p>
+                    <h2 style="color: #0f172a; margin: 10px 0; font-size: 20px;">${activeStudent.name}</h2>
+                    <p style="margin: 0; font-size: 13px;">ፈተናውን በብቃት በማለፍ <b>${percentage}%</b> ውጤት ስለመዘገቡ ተሰጥቷል።</p>
+                </div>
+            `;
+        } else {
+            certContainer.innerHTML = "";
+        }
+
+        document.getElementById('student-review-container').innerHTML = reviewHtml;
+    }
+
+    function loadSubmissionsTable(data) {
+        const container = document.getElementById('teacher-results-container');
+        if(data.length === 0) {
+            container.innerHTML = `<p style="color: var(--text-muted); text-align: center;">እስካሁን የተፈተነ ተማሪ የለም።</p>`;
+            return;
+        }
+
+        let html = `<table><thead><tr><th>#</th><th>ስም</th><th>ID</th><th>ክፍል</th><th>ውጤት</th><th>ሰዓት</th></tr></thead><tbody>`;
+        data.forEach((sub, idx) => {
+            html += `<tr><td>${idx + 1}</td><td>${sub.name}</td><td>${sub.id}</td><td>${sub.grade}</td><td><span class="correct">${sub.score} / ${sub.total}</span></td><td>${sub.time}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    }
+
+    function filterSubmissions() {
+        const query = document.getElementById('search-student').value.toLowerCase();
+        const filtered = submissions.filter(s => s.name.toLowerCase().includes(query) || s.id.toLowerCase().includes(query));
+        loadSubmissionsTable(filtered);
+    }
+</script>
+
+</body>
+</html>
